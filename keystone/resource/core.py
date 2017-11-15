@@ -822,12 +822,16 @@ class Manager(manager.Manager):
 
     @manager.response_truncated
     def list_projects(self, hints=None):
+        # import pdb; pdb.set_trace()
         if hints:
             tag_filters = {}
             # Handle project tag filters separately
             for f in list(hints.filters):
+                if f['comparator'] in ('startswith', 'endswith', 'contains'):
+                    tag_filters[f['comparator']] = True
                 if f['name'] in TAG_SEARCH_FILTERS:
                     tag_filters[f['name']] = f['value']
+                    # tag_filters['tags-list'] = f['value']
                     hints.filters.remove(f)
             if tag_filters:
                 tag_refs = self.driver.list_projects_by_tags(tag_filters)

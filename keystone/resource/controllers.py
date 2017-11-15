@@ -183,7 +183,8 @@ class ProjectV3(controller.V3Controller):
         return ProjectV3.wrap_member(request.context_dict, ref)
 
     @controller.filterprotected('domain_id', 'enabled', 'name',
-                                'parent_id', 'is_domain')
+                                'parent_id', 'is_domain', 'tags',
+                                'tags-any', 'not-tags', 'not-tags-any')
     def list_projects(self, request, filters):
         hints = ProjectV3.build_driver_hints(request, filters)
         # If 'is_domain' has not been included as a query, we default it to
@@ -192,10 +193,6 @@ class ProjectV3(controller.V3Controller):
             hints.add_filter('is_domain', '0')
         # If any tags filters are passed in when listing projects, add them
         # to the hint filters
-        tag_params = ['tags', 'tags-any', 'not-tags', 'not-tags-any']
-        for t in tag_params:
-            if t in request.params:
-                hints.add_filter(t, request.params[t])
         refs = self.resource_api.list_projects(hints=hints)
         return ProjectV3.wrap_collection(request.context_dict,
                                          refs, hints=hints)
