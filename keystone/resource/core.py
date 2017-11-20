@@ -828,7 +828,7 @@ class Manager(manager.Manager):
             # Handle project tag filters separately
             for f in list(hints.filters):
                 if f['comparator'] in ('startswith', 'endswith', 'contains'):
-                    tag_filters[f['comparator']] = True
+                    tag_filters['comparator'] = f['comparator']
                 if f['name'] in TAG_SEARCH_FILTERS:
                     tag_filters[f['name']] = f['value']
                     # tag_filters['tags-list'] = f['value']

@@ -180,50 +180,68 @@ class Resource(base.ResourceDriverBase):
 
     def list_projects_by_tags(self, filters):
         filtered_ids = []
-        subq = []
         tags = []
-
-        if 'tags' in filters.keys():
-            tags = filters['tags'].split(',')
-        elif 'not-tags' in filters.keys():
-            tags = filters['not-tags'].split(',')
-        elif 'not-tags-any' in filters.keys():
-            tags = filters['not-tags-any'].split(',')
-        elif 'tags-any' in filters.keys():
-            tags = filters['tags-any'].split(',')
+        subq = []
+        comparator = []
+        if 'comparator' in filters.keys():
+            comparator = filters['comparator']
+            filters.pop('comparator')
 
         def _sifter(session, query, subq, tags, filtered_ids):
-            filtered_ids += [ptag['project_id'] for ptag in subq]
+            filtered_ids = [ptag['project_id'] for ptag in subq]
             if 'tags' in filters.keys():
+                tags = filters['tags'].split(',')
                 filtered_ids = self._filter_ids_by_sorted_tags(
                     query, subq, tags)
-            elif 'not-tags' in filters.keys():
+            if 'not-tags' in filters.keys():
+                tags = filters['not-tags'].split(',')
                 blacklist_ids = self._filter_ids_by_sorted_tags(
-                    query, subq, tags)
-                filtered_ids = self._filter_not_tags(session, blacklist_ids)
-            elif 'not-tags-any' in filters.keys():
-                filtered_ids = self._filter_not_tags(session, filtered_ids)
+                    query, subq, tags)standin
+                filtered_ids = self._filter_not_tags(session, blacklist_ids, filtered_ids)
+            if 'not-tags-any' in filters.keys():
+                tags = filters['not-tags-any'].split(',')
+                standin = []
+                filtered_ids = self._filter_not_tags(session, filtered_ids, standin)
             return filtered_ids
 
         with sql.session_for_read() as session:
             query = session.query(ProjectTag)
-            if 'contains' in filters.keys():
+            if 'tags' in filters.keys():
+                tags = filters['tags'].split(',')
+            elif 'not-tags' in filters.keys():
+                tags = filters['not-tags'].split(',')
+            elif 'not-tags-any' in filters.keys():
+                tags = filters['not-tags-any'].split(',')
+            elif 'tags-any' in filters.keys():
+                tags = filters['tags-any'].split(',')
+
+            if 'contains' in comparator:
                 for tag in tags:
                     subq += query.filter(ProjectTag.name.contains(tag))
-            if 'startswith' in filters.keys():
+            elif 'startswith' in comparator:
                 for tag in tags:
                     subq += query.filter(ProjectTag.name.startswith(tag))
-            if 'endswith' in filters.keys():
+            elif 'endswith' in comparator:
                 for tag in tags:
                     subq += query.filter(ProjectTag.name.endswith(tag))
             else:
                 subq = query.filter(ProjectTag.name.in_(tags))
-
+            
+            filtered = {}
+            for ptag in subq:
+                filtered[ptag['project_id']] = ptag['name']
+            import pdb; pdb.set_trace()
             filtered_ids = _sifter(session, query, subq, tags, filtered_ids)
+
             query = session.query(Project)
             query = query.filter(Project.id.in_(filtered_ids))
             return [project_ref.to_dict() for project_ref in query.all()
                     if not self._is_hidden_ref(project_ref)]
+
+    def _filter(self, session, query):
+        filtered_ids = [ptag['project_id'] for ptag in query]
+        tagquery = session.query(ProjectTag.name.in_(filtered_ids))
+        filtered_ids1 = [ptag['project_id'] for ptag in query]
 
     def _filter_ids_by_sorted_tags(self, query, subq, tags):
         filtered_ids = []
@@ -237,9 +255,11 @@ class Resource(base.ResourceDriverBase):
                 filtered_ids.append(ptag['project_id'])
         return filtered_ids
 
-    def _filter_not_tags(self, session, blacklist_ids):
+    def _filter_not_tags(self, session, blacklist_ids, filtered_ids):
         subq = session.query(Project)
         valid_ids = [q['id'] for q in subq if q['id'] not in blacklist_ids]
+        if filtered_ids:
+            valid_ids = list(set(valid_ids) & set(filtered_ids))
         return valid_ids
 
     # CRUD

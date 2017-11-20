@@ -792,7 +792,7 @@ class ResourceTestCase(test_v3.RestfulTestCase,
         """Call ``GET /projects?tags={tags}&not-tags={tags}``."""
         project, tags = self._create_project_and_tags(num_of_tags=2)
         tag_string = ','.join(tags)
-        url = '/projects?tags=%(values)s&not-tags=%(values)s'
+        url = '/projects?not-tags=%(values)s'
         resp = self.get(url % {'values': tag_string})
         self.assertValidProjectListResponse(resp)
         self.assertEqual(len(resp.result['projects']), 0)
